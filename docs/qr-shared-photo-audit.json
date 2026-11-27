@@ -1,0 +1,3190 @@
+[
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/08a990ab9b0f1f9650308d7c2803ff7f944e28ddf8a50f56e0f6e4339794be75.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-29-lemon-butter-chicken"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-new-lemon-butter-chicken"
+      ],
+      [
+        "BC5",
+        "27:25:lemon-butter-chicken"
+      ],
+      [
+        "BC5",
+        "new:2:lemon-butter-chicken"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-29-lemon-butter-chicken",
+        "Курица в лимонном соусе"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-new-lemon-butter-chicken",
+        "Курица в лимонном соусе"
+      ]
+    ],
+    "evidence": [
+      "recipe reviewed: chicken thigh, spinach, green beans, lemon butter, toast"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e8713b3acc92e224dd18b82e128f1b413e5edb5a10dc88352edace3335b70e36.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-30-new-york-roast-beef-demi-glace-golden-potatoes"
+      ],
+      [
+        "BC5",
+        "33:6:new-york-roast-beef-demi-glace-golden-potatoes"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-30-new-york-roast-beef-demi-glace-golden-potatoes",
+        "New York Roast Beef, Demi-Glace & Golden Potatoes"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: en"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/669d9270577fad49160b4750032b466f2c37a503d3427cb19ef048ba9ddef9d4.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-1-breakfast-set"
+      ],
+      [
+        "BC5",
+        "1:27:breakfast-set"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-1-breakfast-set",
+        "Завтрак сет на 2 персоны"
+      ]
+    ],
+    "evidence": [
+      "exact names: az,en; exact complete ingredient text: ru,az"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/b465db362127d057e8e9f011f0ee89e151ba1d929d0bc9222fe7886a8fe939b3.jpg",
+    "members": [
+      [
+        "BC1",
+        "e8068e1f-08c1-43ee-ad5d-847eb5627423"
+      ],
+      [
+        "BC2",
+        "e8068e1f-08c1-43ee-ad5d-847eb5627423"
+      ],
+      [
+        "BC3",
+        "e8068e1f-08c1-43ee-ad5d-847eb5627423"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-3-yuxari-manhetten"
+      ],
+      [
+        "BC5",
+        "3:46:upper-manhattan"
+      ],
+      [
+        "Bistro",
+        "e8068e1f-08c1-43ee-ad5d-847eb5627423"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "e8068e1f-08c1-43ee-ad5d-847eb5627423",
+        "Верхний Манхеттен"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-3-yuxari-manhetten",
+        "Верхний Манхеттен"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e9914121bacad9f3f1f9dd5965d46fc481b5b49c4933d77370862b32307cdba8.jpg",
+    "members": [
+      [
+        "BC1",
+        "ecddb6fd-c4c0-4106-99ca-896ec3e20de0"
+      ],
+      [
+        "BC2",
+        "ecddb6fd-c4c0-4106-99ca-896ec3e20de0"
+      ],
+      [
+        "BC3",
+        "ecddb6fd-c4c0-4106-99ca-896ec3e20de0"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-3-toyuq-nagetsleri"
+      ],
+      [
+        "BC5",
+        "3:49:chicken-nuggets"
+      ],
+      [
+        "Bistro",
+        "ecddb6fd-c4c0-4106-99ca-896ec3e20de0"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "ecddb6fd-c4c0-4106-99ca-896ec3e20de0",
+        "Куриные Наггетсы"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/20a42a0ad6f188b626d448b48b3976056023d92c35fe87dcbbb8fba1717390bd.jpg",
+    "members": [
+      [
+        "BC1",
+        "d0d5a70c-8dae-4365-a999-083ecd9b9280"
+      ],
+      [
+        "BC2",
+        "d0d5a70c-8dae-4365-a999-083ecd9b9280"
+      ],
+      [
+        "BC3",
+        "d0d5a70c-8dae-4365-a999-083ecd9b9280"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-4-endi-vorhol-gobelek-sorbasi"
+      ],
+      [
+        "BC5",
+        "4:54:andy-warhol-mushroom-soup"
+      ],
+      [
+        "Bistro",
+        "d0d5a70c-8dae-4365-a999-083ecd9b9280"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "d0d5a70c-8dae-4365-a999-083ecd9b9280",
+        "Грибной Суп «Энди Уорхол»"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-4-endi-vorhol-gobelek-sorbasi",
+        "Грибной суп Энди Уорхол"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/05b9c3be375a87f9d7df999a09ad641946fb01c401eb1cb1f1a6a5143682db30.jpg",
+    "members": [
+      [
+        "BC1",
+        "b84b362b-8c81-40a2-b898-87b1b1998f63"
+      ],
+      [
+        "BC2",
+        "b84b362b-8c81-40a2-b898-87b1b1998f63"
+      ],
+      [
+        "BC3",
+        "b84b362b-8c81-40a2-b898-87b1b1998f63"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-4-gambino-tomati-sorbasi"
+      ],
+      [
+        "BC5",
+        "4:55:gambino-tomato-soup"
+      ],
+      [
+        "Bistro",
+        "b84b362b-8c81-40a2-b898-87b1b1998f63"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "b84b362b-8c81-40a2-b898-87b1b1998f63",
+        "Томатный Суп «Гамбино»"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-4-gambino-tomati-sorbasi",
+        "Томатный суп Гамбино"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/9dca5a8ea16bf413801da873958391b2d35a58d43f65715aadd662a878503da7.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-4-kicik-italia-ordek-sorbasi"
+      ],
+      [
+        "BC5",
+        "4:56:little-italy-duck-soup"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-4-kicik-italia-ordek-sorbasi",
+        "Утиный суп Литл Итали"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e7e94f1dfbe7404bb915b507848097957eb6fd8f538325fa92052bfbc165237c.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-6-staten-aylend-ordeyi"
+      ],
+      [
+        "BC5",
+        "6:65:staten-island-duck"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-6-staten-aylend-ordeyi",
+        "Утка Статен Айленд"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/b12cf1355657823a493bd5a310e29cfd0aa741998050e4ca3b63095f6b48b536.jpg",
+    "members": [
+      [
+        "BC1",
+        "aacd45a3-1682-46de-839d-3fd1a444a479"
+      ],
+      [
+        "BC2",
+        "aacd45a3-1682-46de-839d-3fd1a444a479"
+      ],
+      [
+        "BC3",
+        "aacd45a3-1682-46de-839d-3fd1a444a479"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-margarita"
+      ],
+      [
+        "BC5",
+        "8:94:pizza-margarita"
+      ],
+      [
+        "Bistro",
+        "aacd45a3-1682-46de-839d-3fd1a444a479"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "aacd45a3-1682-46de-839d-3fd1a444a479",
+        "Пицца Маргарита"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-margarita",
+        "Пицца Маргарита"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/a96084a720e79a274ebb2ec15faf12c0641a8a7295456bbfaf10476d0204dd5a.jpg",
+    "members": [
+      [
+        "BC1",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc"
+      ],
+      [
+        "BC2",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc"
+      ],
+      [
+        "BC3",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-chicken-fungi"
+      ],
+      [
+        "BC5",
+        "8:95:pizza-chicken-fungi"
+      ],
+      [
+        "Bistro",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc",
+        "Пицца «Чикен Фунги»"
+      ],
+      [
+        "BC2",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc",
+        "Пицца Чикен Фунги"
+      ],
+      [
+        "BC3",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc",
+        "Пицца Чикен Фунги"
+      ],
+      [
+        "Bistro",
+        "1c7c9b4b-bf4d-4760-9889-b54de849ebfc",
+        "Пицца Чикен Фунги"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/8d135982d112bc0b8e393c9757e5496d7817a81674962f4d26061b3c21030c68.jpg",
+    "members": [
+      [
+        "BC1",
+        "aad2246a-c857-4a3c-a43c-83cedf9672ee"
+      ],
+      [
+        "BC2",
+        "aad2246a-c857-4a3c-a43c-83cedf9672ee"
+      ],
+      [
+        "BC3",
+        "aad2246a-c857-4a3c-a43c-83cedf9672ee"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-chicken-bbq"
+      ],
+      [
+        "BC5",
+        "8:96:pizza-chicken-bbq"
+      ],
+      [
+        "Bistro",
+        "aad2246a-c857-4a3c-a43c-83cedf9672ee"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "aad2246a-c857-4a3c-a43c-83cedf9672ee",
+        "Пицца «Чикен Барбекю»"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-chicken-bbq",
+        "Пицца Чикен Барбекю"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/08b5e9576646310d8e3bb06688415c22e77e9b91b04f051ed017101566566619.jpg",
+    "members": [
+      [
+        "BC1",
+        "3b36b945-ecd1-48f5-b287-7bb9db9a9855"
+      ],
+      [
+        "BC2",
+        "3b36b945-ecd1-48f5-b287-7bb9db9a9855"
+      ],
+      [
+        "BC3",
+        "3b36b945-ecd1-48f5-b287-7bb9db9a9855"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-salami-fungi"
+      ],
+      [
+        "BC5",
+        "8:97:pizza-salami-fungi"
+      ],
+      [
+        "Bistro",
+        "3b36b945-ecd1-48f5-b287-7bb9db9a9855"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "3b36b945-ecd1-48f5-b287-7bb9db9a9855",
+        "Пицца «Салями Фунги»"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-salami-fungi",
+        "Пицца Салями Фунги"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/0566432f055522004d75e4a6c74b8a0ccae8decdf13a4fbba81590c4ec70b936.jpg",
+    "members": [
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-pepperoni"
+      ],
+      [
+        "BC5",
+        "8:98:pizza-pepperoni"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-pepperoni",
+        "Пицца Пеперони"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e3da766998a214bcf72c614d8e919a60624073ebd6be7a1d1c0295c834a8bf39.jpg",
+    "members": [
+      [
+        "BC1",
+        "9a948435-ddc2-497f-87e7-f9525337a9d3"
+      ],
+      [
+        "BC2",
+        "9a948435-ddc2-497f-87e7-f9525337a9d3"
+      ],
+      [
+        "BC3",
+        "9a948435-ddc2-497f-87e7-f9525337a9d3"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-dord-pendir"
+      ],
+      [
+        "BC5",
+        "8:99:pizza-4-cheese"
+      ],
+      [
+        "Bistro",
+        "9a948435-ddc2-497f-87e7-f9525337a9d3"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "9a948435-ddc2-497f-87e7-f9525337a9d3",
+        "Пицца «Четыре Сыра»"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-dord-pendir",
+        "Пицца Четыре Сыра"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/1afb07d5f74cbfcbcc12cbe8aaced270c00205d379e497ab10618b237b08e307.jpg",
+    "members": [
+      [
+        "BC1",
+        "3b8a7b9e-0a67-4746-bb77-8940dbe7d503"
+      ],
+      [
+        "BC2",
+        "3b8a7b9e-0a67-4746-bb77-8940dbe7d503"
+      ],
+      [
+        "BC3",
+        "3b8a7b9e-0a67-4746-bb77-8940dbe7d503"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-meat-lovers"
+      ],
+      [
+        "BC5",
+        "8:100:pizza-meat-lovers"
+      ],
+      [
+        "Bistro",
+        "3b8a7b9e-0a67-4746-bb77-8940dbe7d503"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "3b8a7b9e-0a67-4746-bb77-8940dbe7d503",
+        "Пицца Meat Lovers"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-8-pizza-meat-lovers",
+        "Пицца Meat Lovers"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/2cb8b234d686083fdba95bff48bf4afe558f2126f286fc0ac3f00381e1154271.jpg",
+    "members": [
+      [
+        "BC1",
+        "32b11c7d-3ad3-4e42-a5f6-4d6d3bc9e972"
+      ],
+      [
+        "BC2",
+        "32b11c7d-3ad3-4e42-a5f6-4d6d3bc9e972"
+      ],
+      [
+        "BC3",
+        "32b11c7d-3ad3-4e42-a5f6-4d6d3bc9e972"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-9-busvik-dondurmasi"
+      ],
+      [
+        "BC5",
+        "9:88:bushvik-ice-cream"
+      ],
+      [
+        "Bistro",
+        "32b11c7d-3ad3-4e42-a5f6-4d6d3bc9e972"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "32b11c7d-3ad3-4e42-a5f6-4d6d3bc9e972",
+        "Мороженое Бушвик"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-9-busvik-dondurmasi",
+        "Мороженое Бушвик"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az; exact complete ingredient text: az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/a7f314b17f9035e5bd225aec743e0a2064da33e3f60cca933468d206cdbdbcdb.webp",
+    "members": [
+      [
+        "BC1",
+        "bdddb610-e00c-4027-accb-3c1916b541fe"
+      ],
+      [
+        "BC2",
+        "bdddb610-e00c-4027-accb-3c1916b541fe"
+      ],
+      [
+        "BC3",
+        "bdddb610-e00c-4027-accb-3c1916b541fe"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-saftali-benovse"
+      ],
+      [
+        "BC5",
+        "14:133:peach-violet"
+      ],
+      [
+        "Bistro",
+        "bdddb610-e00c-4027-accb-3c1916b541fe"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-saftali-benovse",
+        "Персик Фиалка"
+      ],
+      [
+        "BC5",
+        "14:133:peach-violet",
+        "Персик Фиалка"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/06c2f6b72ae9bba646c935eebe38c304b524c0602a498beb4c3a4d195d1eff46.webp",
+    "members": [
+      [
+        "BC1",
+        "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"
+      ],
+      [
+        "BC2",
+        "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"
+      ],
+      [
+        "BC3",
+        "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-ananas-rozmarin"
+      ],
+      [
+        "BC5",
+        "14:134:pineapple-rosemary"
+      ],
+      [
+        "Bistro",
+        "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-ananas-rozmarin",
+        "Ананас Розмарин"
+      ],
+      [
+        "BC5",
+        "14:134:pineapple-rosemary",
+        "Ананас Розмарин"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/28f15488f731331fce54b08bfa11f12714bb688b93f45dcf286b0b5960f73d34.webp",
+    "members": [
+      [
+        "BC1",
+        "8af83a2f-58d8-4a15-94be-9d649ae8e3dc"
+      ],
+      [
+        "BC2",
+        "8af83a2f-58d8-4a15-94be-9d649ae8e3dc"
+      ],
+      [
+        "BC3",
+        "8af83a2f-58d8-4a15-94be-9d649ae8e3dc"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-marakuya-sumax"
+      ],
+      [
+        "BC5",
+        "14:135:passion-fruit-sumakh"
+      ],
+      [
+        "Bistro",
+        "8af83a2f-58d8-4a15-94be-9d649ae8e3dc"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-marakuya-sumax",
+        "Маракуйя Сумах"
+      ],
+      [
+        "BC5",
+        "14:135:passion-fruit-sumakh",
+        "Маракуйя Сумах"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/5bb5ddcfa9afe3eab4894db9a0876c5257236b121e131894f591f610590e2ab8.webp",
+    "members": [
+      [
+        "BC1",
+        "58420750-0664-435d-a775-1499ca75cb96"
+      ],
+      [
+        "BC2",
+        "58420750-0664-435d-a775-1499ca75cb96"
+      ],
+      [
+        "BC3",
+        "58420750-0664-435d-a775-1499ca75cb96"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-aloe-edviyyatli-nar"
+      ],
+      [
+        "BC5",
+        "14:136:aloe-spicy-pomegranate"
+      ],
+      [
+        "Bistro",
+        "58420750-0664-435d-a775-1499ca75cb96"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-aloe-edviyyatli-nar",
+        "Алоэ Пряный Гранат"
+      ],
+      [
+        "BC5",
+        "14:136:aloe-spicy-pomegranate",
+        "Алоэ Пряный Гранат"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/6122e3a50830a363d9a7bd06121c2e6a6d49107ff2d49712256f795b084fc87f.webp",
+    "members": [
+      [
+        "BC1",
+        "3b68b8eb-b36d-43f7-9769-87487436ea06"
+      ],
+      [
+        "BC2",
+        "3b68b8eb-b36d-43f7-9769-87487436ea06"
+      ],
+      [
+        "BC3",
+        "3b68b8eb-b36d-43f7-9769-87487436ea06"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-kivi-boom"
+      ],
+      [
+        "BC5",
+        "14:137:kiwi-boom"
+      ],
+      [
+        "Bistro",
+        "3b68b8eb-b36d-43f7-9769-87487436ea06"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-kivi-boom",
+        "Киви Боом"
+      ],
+      [
+        "BC5",
+        "14:137:kiwi-boom",
+        "Киви Бум"
+      ]
+    ],
+    "evidence": [
+      "exact names: az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7f8f6a760b0d00ca87eb9f3d4ea70f6bc8ead00d43c79dedf378fe12142417d0.webp",
+    "members": [
+      [
+        "BC1",
+        "27b69ed7-d554-45e3-8139-da2780657d78"
+      ],
+      [
+        "BC2",
+        "27b69ed7-d554-45e3-8139-da2780657d78"
+      ],
+      [
+        "BC3",
+        "27b69ed7-d554-45e3-8139-da2780657d78"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-sarikok-zencefil"
+      ],
+      [
+        "BC5",
+        "14:138:turmeric-ginger"
+      ],
+      [
+        "Bistro",
+        "27b69ed7-d554-45e3-8139-da2780657d78"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-14-sarikok-zencefil",
+        "Куркума Имбирь"
+      ],
+      [
+        "BC5",
+        "14:138:turmeric-ginger",
+        "Куркума Имбирь"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/64979b1d73846581f0807e5a36cd191bb46572b6a6d7a950ef1914f0d165eb0f.jpg",
+    "members": [
+      [
+        "BC1",
+        "a7f29d70-c09b-44ae-bf90-be708726751b"
+      ],
+      [
+        "BC2",
+        "a7f29d70-c09b-44ae-bf90-be708726751b"
+      ],
+      [
+        "BC3",
+        "a7f29d70-c09b-44ae-bf90-be708726751b"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-14-yodas-love"
+      ],
+      [
+        "BC5",
+        "14:142:yodas-love"
+      ],
+      [
+        "Bistro",
+        "a7f29d70-c09b-44ae-bf90-be708726751b"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "a7f29d70-c09b-44ae-bf90-be708726751b",
+        "Yoda's Love"
+      ],
+      [
+        "BC2",
+        "a7f29d70-c09b-44ae-bf90-be708726751b",
+        "Yoda's Love"
+      ],
+      [
+        "BC3",
+        "a7f29d70-c09b-44ae-bf90-be708726751b",
+        "Yoda's Love"
+      ],
+      [
+        "Bistro",
+        "a7f29d70-c09b-44ae-bf90-be708726751b",
+        "Yoda's Love"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/a80954daf2db9052ea3082f24ecb9f0c5668a8f437c7e1d34cf9585517a6e63b.webp",
+    "members": [
+      [
+        "BC1",
+        "94de4f73-f1f7-4de6-9c78-a9149543ee30"
+      ],
+      [
+        "BC2",
+        "94de4f73-f1f7-4de6-9c78-a9149543ee30"
+      ],
+      [
+        "BC3",
+        "94de4f73-f1f7-4de6-9c78-a9149543ee30"
+      ],
+      [
+        "BC4",
+        "clopos-bc4-2-souslar"
+      ],
+      [
+        "BC5",
+        "43:200:sauces"
+      ],
+      [
+        "Bistro",
+        "94de4f73-f1f7-4de6-9c78-a9149543ee30"
+      ]
+    ],
+    "changed": [
+      [
+        "BC4",
+        "clopos-bc4-2-souslar",
+        "Соусы"
+      ],
+      [
+        "BC5",
+        "43:200:sauces",
+        "Соусы"
+      ]
+    ],
+    "evidence": [
+      "exact names: ru,az,en; exact complete ingredient text: ru,az,en",
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/c96efdf159ccabb97e57cfd365612b23a114078f9639ed30c309229673d23642.jpg",
+    "members": [
+      [
+        "BC1",
+        "fb557281-fdf4-40b0-b6a7-2759a1d57913"
+      ],
+      [
+        "BC2",
+        "fb557281-fdf4-40b0-b6a7-2759a1d57913"
+      ],
+      [
+        "BC3",
+        "fb557281-fdf4-40b0-b6a7-2759a1d57913"
+      ],
+      [
+        "BC5",
+        "25:188:x-shot"
+      ],
+      [
+        "Bistro",
+        "fb557281-fdf4-40b0-b6a7-2759a1d57913"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "fb557281-fdf4-40b0-b6a7-2759a1d57913",
+        "X Shot"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/2a00b469474fac0130874432f4ad49ad18fb2dfa59f3781462034143a4443586.webp",
+    "members": [
+      [
+        "BC1",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7"
+      ],
+      [
+        "BC2",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7"
+      ],
+      [
+        "BC3",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7"
+      ],
+      [
+        "Bistro",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7",
+        "Сироп"
+      ],
+      [
+        "BC2",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7",
+        "Сироп"
+      ],
+      [
+        "BC3",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7",
+        "Сироп"
+      ],
+      [
+        "Bistro",
+        "1ccb0eb3-e857-4b53-969c-a8e8ebcc50e7",
+        "Сироп"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/0497c0bc7b31ec991e12f2a2007b7d1683a04652ecd86a18a5513ed6bc10534a.webp",
+    "members": [
+      [
+        "BC1",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680"
+      ],
+      [
+        "BC2",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680"
+      ],
+      [
+        "BC3",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680"
+      ],
+      [
+        "Bistro",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680",
+        "Молоко"
+      ],
+      [
+        "BC2",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680",
+        "Молоко"
+      ],
+      [
+        "BC3",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680",
+        "Молоко"
+      ],
+      [
+        "Bistro",
+        "c3a21128-6acf-443a-9ec6-540ea0dbf680",
+        "Молоко"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/d3999bcdced1e5d13f9349b09ff4852c4681c1619ff6c991e20577615e718858.webp",
+    "members": [
+      [
+        "BC1",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0"
+      ],
+      [
+        "BC2",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0"
+      ],
+      [
+        "BC3",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0"
+      ],
+      [
+        "Bistro",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0",
+        "Взбитые Сливки"
+      ],
+      [
+        "BC2",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0",
+        "Взбитые Сливки"
+      ],
+      [
+        "BC3",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0",
+        "Взбитые Сливки"
+      ],
+      [
+        "Bistro",
+        "ea23d734-2b3a-4cc9-960e-4d7f2b4be6e0",
+        "Взбитые Сливки"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/90359ff5c89d92029a04985df83fe5686e11c012582828f9981f9369743dc6ad.webp",
+    "members": [
+      [
+        "BC1",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b"
+      ],
+      [
+        "BC2",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b"
+      ],
+      [
+        "BC3",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b"
+      ],
+      [
+        "Bistro",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b",
+        "Альтернативное Молоко"
+      ],
+      [
+        "BC2",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b",
+        "Альтернативное молоко"
+      ],
+      [
+        "BC3",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b",
+        "Альтернативное молоко"
+      ],
+      [
+        "Bistro",
+        "b1133bf8-fa45-4d64-868a-d6c61087a53b",
+        "Альтернативное молоко"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/63188caa11ea9d87d28ce88359e7888aa2c560350096d2fa6f87e7e946f99c38.webp",
+    "members": [
+      [
+        "BC1",
+        "a9eaba42-98e9-4970-8023-6303d1a2d234"
+      ],
+      [
+        "BC2",
+        "a9eaba42-98e9-4970-8023-6303d1a2d234"
+      ],
+      [
+        "BC3",
+        "a9eaba42-98e9-4970-8023-6303d1a2d234"
+      ],
+      [
+        "BC5",
+        "43:201:fruits"
+      ],
+      [
+        "Bistro",
+        "a9eaba42-98e9-4970-8023-6303d1a2d234"
+      ]
+    ],
+    "changed": [
+      [
+        "BC5",
+        "43:201:fruits",
+        "Фрукты"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/466faed911adbc3344d047563b8c4550d90d50d46fc5b86ffae1ae18481fe929.webp",
+    "members": [
+      [
+        "BC1",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e"
+      ],
+      [
+        "BC2",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e"
+      ],
+      [
+        "BC3",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e"
+      ],
+      [
+        "Bistro",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e",
+        "Экстра Соус"
+      ],
+      [
+        "BC2",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e",
+        "Экстра Соус"
+      ],
+      [
+        "BC3",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e",
+        "Экстра Соус"
+      ],
+      [
+        "Bistro",
+        "21c116f5-5ab7-4209-969e-23b224c06d8e",
+        "Экстра Соус"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e13c82515d81868e56eb6796f8ca2446bc14826884e185b315508b56742383f8.jpg",
+    "members": [
+      [
+        "BC1",
+        "70271b0b-0979-4133-adc6-218c7ae99ca9"
+      ],
+      [
+        "BC2",
+        "70271b0b-0979-4133-adc6-218c7ae99ca9"
+      ],
+      [
+        "BC3",
+        "70271b0b-0979-4133-adc6-218c7ae99ca9"
+      ],
+      [
+        "BC5",
+        "43:202:black-toast"
+      ],
+      [
+        "Bistro",
+        "70271b0b-0979-4133-adc6-218c7ae99ca9"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "70271b0b-0979-4133-adc6-218c7ae99ca9",
+        "Тост Диетический"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/af5b61e9bd124654554a5719494389294959824a6dcd013754f3811525c04694.jpg",
+    "members": [
+      [
+        "BC1",
+        "b477966b-ce58-4647-940b-9ee6974014b2"
+      ],
+      [
+        "BC2",
+        "b477966b-ce58-4647-940b-9ee6974014b2"
+      ],
+      [
+        "BC3",
+        "b477966b-ce58-4647-940b-9ee6974014b2"
+      ],
+      [
+        "BC5",
+        "43:203:extra-brioche"
+      ],
+      [
+        "Bistro",
+        "b477966b-ce58-4647-940b-9ee6974014b2"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "b477966b-ce58-4647-940b-9ee6974014b2",
+        "Экстра Бриошь"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/93bcac7c9b21394cedf4143b79fb322bcb926b40f6155d667d8bda0ec19420a4.jpg",
+    "members": [
+      [
+        "BC1",
+        "5d33c6e6-39b1-406b-8bc2-ed3b9cfc99a5"
+      ],
+      [
+        "BC2",
+        "5d33c6e6-39b1-406b-8bc2-ed3b9cfc99a5"
+      ],
+      [
+        "BC3",
+        "5d33c6e6-39b1-406b-8bc2-ed3b9cfc99a5"
+      ],
+      [
+        "BC5",
+        "43:204:extra-pita"
+      ],
+      [
+        "Bistro",
+        "5d33c6e6-39b1-406b-8bc2-ed3b9cfc99a5"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "5d33c6e6-39b1-406b-8bc2-ed3b9cfc99a5",
+        "Экстра Пита"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/4095f70aa699bb5cbc7c56d7568a1648b30d70b7dd1719f14168a96d8ea6f45d.webp",
+    "members": [
+      [
+        "BC1",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751"
+      ],
+      [
+        "BC2",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751"
+      ],
+      [
+        "BC3",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751"
+      ],
+      [
+        "Bistro",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751",
+        "Сэндвич Ист-Сайд"
+      ],
+      [
+        "BC2",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751",
+        "Сэндвич Ист-Сайд"
+      ],
+      [
+        "BC3",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751",
+        "Сэндвич Ист-Сайд"
+      ],
+      [
+        "Bistro",
+        "494e701c-1b58-4b6f-a7e2-6ff9c2b20751",
+        "Сэндвич Ист-Сайд"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/a819813a9aee6f4d11af7df057977aa95a63323caa04560c70985d835da31a0d.jpg",
+    "members": [
+      [
+        "BC1",
+        "5db8dbbf-ca7d-4591-ae60-1705715826d5"
+      ],
+      [
+        "BC2",
+        "5db8dbbf-ca7d-4591-ae60-1705715826d5"
+      ],
+      [
+        "BC3",
+        "5db8dbbf-ca7d-4591-ae60-1705715826d5"
+      ],
+      [
+        "BC5",
+        "6:74:sandwich-west-bronx"
+      ],
+      [
+        "Bistro",
+        "5db8dbbf-ca7d-4591-ae60-1705715826d5"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "5db8dbbf-ca7d-4591-ae60-1705715826d5",
+        "Сэндвич Западный Бронкс"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/a667a3b1c2a824476240337b6bfbdf1008974bf04144e50e9e6c76da0ca22742.jpg",
+    "members": [
+      [
+        "BC1",
+        "212e0dd7-e6e6-4b4b-a66d-130c92a0cd10"
+      ],
+      [
+        "BC2",
+        "212e0dd7-e6e6-4b4b-a66d-130c92a0cd10"
+      ],
+      [
+        "BC3",
+        "212e0dd7-e6e6-4b4b-a66d-130c92a0cd10"
+      ],
+      [
+        "BC5",
+        "6:75:brayton-falafel"
+      ],
+      [
+        "Bistro",
+        "212e0dd7-e6e6-4b4b-a66d-130c92a0cd10"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "212e0dd7-e6e6-4b4b-a66d-130c92a0cd10",
+        "Сэндвич Брайтон"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/f7a82bd954465d7998ae5fd3fbfd1708515616d8be4b88febcb1e55e6c0198ad.jpg",
+    "members": [
+      [
+        "BC1",
+        "6c1a1a60-ab7c-410e-9bf0-bca68586b818"
+      ],
+      [
+        "BC2",
+        "6c1a1a60-ab7c-410e-9bf0-bca68586b818"
+      ],
+      [
+        "BC3",
+        "6c1a1a60-ab7c-410e-9bf0-bca68586b818"
+      ],
+      [
+        "BC5",
+        "6:72:3rd-avenue-sandwich"
+      ],
+      [
+        "Bistro",
+        "6c1a1a60-ab7c-410e-9bf0-bca68586b818"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "6c1a1a60-ab7c-410e-9bf0-bca68586b818",
+        "Сэндвич Третья Авеню"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/193564591a07f654a5de54242b4bd5e9bb296b708f762151aee261b9bb8a4cc6.jpg",
+    "members": [
+      [
+        "BC1",
+        "fc3f3f4a-942d-4e2c-9c3a-f5a5f62d3b00"
+      ],
+      [
+        "BC2",
+        "fc3f3f4a-942d-4e2c-9c3a-f5a5f62d3b00"
+      ],
+      [
+        "BC3",
+        "fc3f3f4a-942d-4e2c-9c3a-f5a5f62d3b00"
+      ],
+      [
+        "BC5",
+        "6:67:bacon-cherry-williams-burger"
+      ],
+      [
+        "Bistro",
+        "fc3f3f4a-942d-4e2c-9c3a-f5a5f62d3b00"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "fc3f3f4a-942d-4e2c-9c3a-f5a5f62d3b00",
+        "Вильямс Бургер Бекон Вишня"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e92f9740950db1b34f18b6e650533f63e363da6cf9b7cbf85fbc40305251b66d.jpg",
+    "members": [
+      [
+        "BC1",
+        "c6630345-2bae-4324-bcc6-c71cc3226efc"
+      ],
+      [
+        "BC2",
+        "c6630345-2bae-4324-bcc6-c71cc3226efc"
+      ],
+      [
+        "BC3",
+        "c6630345-2bae-4324-bcc6-c71cc3226efc"
+      ],
+      [
+        "BC5",
+        "6:68:creamy-mushroom-burger-williams"
+      ],
+      [
+        "Bistro",
+        "c6630345-2bae-4324-bcc6-c71cc3226efc"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "c6630345-2bae-4324-bcc6-c71cc3226efc",
+        "Вильямс Бургер со сливочными грибами"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/9cd3d356409ce5749b44c0679eead49a2d022302dccefe1d3ce9ef337d870a8e.jpg",
+    "members": [
+      [
+        "BC1",
+        "b769d1a8-fe80-430e-9df0-62f0ed82ebb0"
+      ],
+      [
+        "BC2",
+        "b769d1a8-fe80-430e-9df0-62f0ed82ebb0"
+      ],
+      [
+        "BC3",
+        "b769d1a8-fe80-430e-9df0-62f0ed82ebb0"
+      ],
+      [
+        "BC5",
+        "6:66:burger-williams"
+      ],
+      [
+        "Bistro",
+        "b769d1a8-fe80-430e-9df0-62f0ed82ebb0"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "b769d1a8-fe80-430e-9df0-62f0ed82ebb0",
+        "Вильямс Бургер"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7116b3342688ff5b8ba4f13aaef049edc486c81940facd7a1ce23184221ebf8b.webp",
+    "members": [
+      [
+        "BC1",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5"
+      ],
+      [
+        "BC2",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5"
+      ],
+      [
+        "BC3",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5"
+      ],
+      [
+        "Bistro",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "BC2",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "BC3",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "Bistro",
+        "3fb6820b-3aff-411b-84f8-f76ad538bfc5",
+        "Рокфеллер Бургер"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e1acedc39e2b2ac2c2b3ba04dcd95bec42edef2ba63b2be2d0b307a1ff6751c7.jpg",
+    "members": [
+      [
+        "BC1",
+        "a86cb3de-2121-40df-92ef-39acecb9dcf4"
+      ],
+      [
+        "BC2",
+        "a86cb3de-2121-40df-92ef-39acecb9dcf4"
+      ],
+      [
+        "BC3",
+        "a86cb3de-2121-40df-92ef-39acecb9dcf4"
+      ],
+      [
+        "BC5",
+        "6:71:roosevelt-burger"
+      ],
+      [
+        "Bistro",
+        "a86cb3de-2121-40df-92ef-39acecb9dcf4"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "a86cb3de-2121-40df-92ef-39acecb9dcf4",
+        "Рузвельт Бургер"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/44be21c55d6722dfb2bda1791ebf6f9fb76b69bdf551f6f24f04a27844ab8074.jpg",
+    "members": [
+      [
+        "BC1",
+        "703f0d02-f796-4ca2-9b73-7891b1962b77"
+      ],
+      [
+        "BC2",
+        "703f0d02-f796-4ca2-9b73-7891b1962b77"
+      ],
+      [
+        "BC3",
+        "703f0d02-f796-4ca2-9b73-7891b1962b77"
+      ],
+      [
+        "BC5",
+        "6:70:charleston-burger"
+      ],
+      [
+        "Bistro",
+        "703f0d02-f796-4ca2-9b73-7891b1962b77"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "703f0d02-f796-4ca2-9b73-7891b1962b77",
+        "Чарлзстон Бургер"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/b7f5c04530bcb4fabce8f06d281e89ba974f21277a6b7a817ebb6076db341a86.jpg",
+    "members": [
+      [
+        "BC1",
+        "ec9e3b30-b591-4b88-adbb-32a73e643f9b"
+      ],
+      [
+        "BC2",
+        "ec9e3b30-b591-4b88-adbb-32a73e643f9b"
+      ],
+      [
+        "BC3",
+        "ec9e3b30-b591-4b88-adbb-32a73e643f9b"
+      ],
+      [
+        "BC5",
+        "6:77:chinatown-chicken"
+      ],
+      [
+        "Bistro",
+        "ec9e3b30-b591-4b88-adbb-32a73e643f9b"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "ec9e3b30-b591-4b88-adbb-32a73e643f9b",
+        "Курица Чайна-Таун"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e3ef8026c28e612e65ee490a3996da8135c8b4b58109ff53484893c4353e0cd4.jpg",
+    "members": [
+      [
+        "BC1",
+        "0f02bc30-d2c2-419e-9c2f-7c07efb715ad"
+      ],
+      [
+        "BC2",
+        "0f02bc30-d2c2-419e-9c2f-7c07efb715ad"
+      ],
+      [
+        "BC3",
+        "0f02bc30-d2c2-419e-9c2f-7c07efb715ad"
+      ],
+      [
+        "BC5",
+        "9:81:toffee-cheesecake"
+      ],
+      [
+        "Bistro",
+        "0f02bc30-d2c2-419e-9c2f-7c07efb715ad"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "0f02bc30-d2c2-419e-9c2f-7c07efb715ad",
+        "Тоффи-Чизкейк"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7f0527c16b3e889640b28681b55719c78b89d01f4cb6c10f9319a9b263f50733.jpg",
+    "members": [
+      [
+        "BC1",
+        "f304c228-c6ca-46d6-9eec-4468e9f5b7f4"
+      ],
+      [
+        "BC2",
+        "f304c228-c6ca-46d6-9eec-4468e9f5b7f4"
+      ],
+      [
+        "BC3",
+        "f304c228-c6ca-46d6-9eec-4468e9f5b7f4"
+      ],
+      [
+        "BC5",
+        "9:87:eclair-brooklyn"
+      ],
+      [
+        "Bistro",
+        "f304c228-c6ca-46d6-9eec-4468e9f5b7f4"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "f304c228-c6ca-46d6-9eec-4468e9f5b7f4",
+        "Эклер Бруклин"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/9d2a78ffaf508d6bd6ca27ccf48ea019c19c83201a617f2eac9bdb73edd4eb7d.webp",
+    "members": [
+      [
+        "BC1",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153"
+      ],
+      [
+        "BC2",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153"
+      ],
+      [
+        "BC3",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153"
+      ],
+      [
+        "Bistro",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153",
+        "Мусс-Чизкейк «Нью-Йорк»"
+      ],
+      [
+        "BC2",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153",
+        "Мусс-Чизкейк «Нью-Йорк»"
+      ],
+      [
+        "BC3",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153",
+        "Мусс-Чизкейк «Нью-Йорк»"
+      ],
+      [
+        "Bistro",
+        "22c73265-7f68-4158-9d7e-1e3b02b07153",
+        "Мусс-Чизкейк «Нью-Йорк»"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/4a78bd4fb44b30bff60710f261e3a842e29f298a6efa57136d0c64aa1892db5b.jpg",
+    "members": [
+      [
+        "BC1",
+        "fb857523-93c4-4cbf-bfc5-6e89700d03bd"
+      ],
+      [
+        "BC2",
+        "fb857523-93c4-4cbf-bfc5-6e89700d03bd"
+      ],
+      [
+        "BC3",
+        "fb857523-93c4-4cbf-bfc5-6e89700d03bd"
+      ],
+      [
+        "BC5",
+        "1:38:shakshouka"
+      ],
+      [
+        "Bistro",
+        "fb857523-93c4-4cbf-bfc5-6e89700d03bd"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "fb857523-93c4-4cbf-bfc5-6e89700d03bd",
+        "Шакшука"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/1e2a745669ddc2b6e74bff4288c6acba2c8ede0b8d3ec7b2cfc7d27e59787cc8.jpg",
+    "members": [
+      [
+        "BC1",
+        "800eb385-26a6-4306-9d65-b98a3b47b688"
+      ],
+      [
+        "BC2",
+        "800eb385-26a6-4306-9d65-b98a3b47b688"
+      ],
+      [
+        "BC3",
+        "800eb385-26a6-4306-9d65-b98a3b47b688"
+      ],
+      [
+        "BC5",
+        "1:43:classic-omelette"
+      ],
+      [
+        "Bistro",
+        "800eb385-26a6-4306-9d65-b98a3b47b688"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "800eb385-26a6-4306-9d65-b98a3b47b688",
+        "Классический Омлет"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/3296e45d50292c7098642caa4580766721ff97cc4b5b55180b42a6fe271fd516.jpg",
+    "members": [
+      [
+        "BC1",
+        "451423fe-ee75-4345-aeb2-7a0d1c470552"
+      ],
+      [
+        "BC2",
+        "451423fe-ee75-4345-aeb2-7a0d1c470552"
+      ],
+      [
+        "BC3",
+        "451423fe-ee75-4345-aeb2-7a0d1c470552"
+      ],
+      [
+        "BC5",
+        "1:42:fried-eggs"
+      ],
+      [
+        "Bistro",
+        "451423fe-ee75-4345-aeb2-7a0d1c470552"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "451423fe-ee75-4345-aeb2-7a0d1c470552",
+        "Яичница-Глазунья"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/f31a53a3bc1059d8dbdd2f31ee0095235caef37a2d5572ab1486aad3fa84c67d.jpg",
+    "members": [
+      [
+        "BC1",
+        "077f7b44-26e1-4cd4-a456-0a31b8b19775"
+      ],
+      [
+        "BC2",
+        "077f7b44-26e1-4cd4-a456-0a31b8b19775"
+      ],
+      [
+        "BC3",
+        "077f7b44-26e1-4cd4-a456-0a31b8b19775"
+      ],
+      [
+        "BC5",
+        "1:39:new-york-breakfast"
+      ],
+      [
+        "Bistro",
+        "077f7b44-26e1-4cd4-a456-0a31b8b19775"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "077f7b44-26e1-4cd4-a456-0a31b8b19775",
+        "Нью-Йоркский Завтрак"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7543ff7f123a275530f3a532ff18f89e63bf8b6e692e2d3ed98eea8727504711.jpg",
+    "members": [
+      [
+        "BC1",
+        "d6f8f50c-31f6-4be0-9418-d439904621fc"
+      ],
+      [
+        "BC2",
+        "d6f8f50c-31f6-4be0-9418-d439904621fc"
+      ],
+      [
+        "BC3",
+        "d6f8f50c-31f6-4be0-9418-d439904621fc"
+      ],
+      [
+        "BC5",
+        "1:30:bagel-with-salmon"
+      ],
+      [
+        "Bistro",
+        "d6f8f50c-31f6-4be0-9418-d439904621fc"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "d6f8f50c-31f6-4be0-9418-d439904621fc",
+        "Бейгл с Лососем"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/1ee55bf54ef3e890f18cf3ad3b6f0a5c2632ba281e0470d029196d6dd4394714.jpg",
+    "members": [
+      [
+        "BC1",
+        "aeb6fff5-ae04-44d9-8bc6-0b6a678714b8"
+      ],
+      [
+        "BC2",
+        "aeb6fff5-ae04-44d9-8bc6-0b6a678714b8"
+      ],
+      [
+        "BC3",
+        "aeb6fff5-ae04-44d9-8bc6-0b6a678714b8"
+      ],
+      [
+        "BC5",
+        "1:40:granola"
+      ],
+      [
+        "Bistro",
+        "aeb6fff5-ae04-44d9-8bc6-0b6a678714b8"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "aeb6fff5-ae04-44d9-8bc6-0b6a678714b8",
+        "Гранола"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/bf91c671810a7b285bd40a8401c04bda6c0b98fa733cdf6c3bb0ec13b84af2b9.jpg",
+    "members": [
+      [
+        "BC1",
+        "dedf8a6f-5a0d-4d7e-9595-76d0f086bfc0"
+      ],
+      [
+        "BC2",
+        "dedf8a6f-5a0d-4d7e-9595-76d0f086bfc0"
+      ],
+      [
+        "BC3",
+        "dedf8a6f-5a0d-4d7e-9595-76d0f086bfc0"
+      ],
+      [
+        "BC5",
+        "1:41:oatmeal-with-milk"
+      ],
+      [
+        "Bistro",
+        "dedf8a6f-5a0d-4d7e-9595-76d0f086bfc0"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "dedf8a6f-5a0d-4d7e-9595-76d0f086bfc0",
+        "Овсяная Каша"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/8bd4df70748e6939b1b93ad6f7fb8a359391c67e25562124d0c82108e834bc01.webp",
+    "members": [
+      [
+        "BC1",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8"
+      ],
+      [
+        "BC2",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8"
+      ],
+      [
+        "BC3",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8"
+      ],
+      [
+        "Bistro",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8",
+        "Чипсы Гарлем"
+      ],
+      [
+        "BC2",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8",
+        "Чипсы Гарлем"
+      ],
+      [
+        "BC3",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8",
+        "Чипсы Гарлем"
+      ],
+      [
+        "Bistro",
+        "5f763417-d5fc-4991-b9d2-7c1f64550fd8",
+        "Чипсы Гарлем"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/29c59d0f3fd196c7fc2e0df78c97ca0debd0e5bf4bc89401eae9d37dd0921505.jpg",
+    "members": [
+      [
+        "BC1",
+        "f769126e-b5a4-444b-927c-f6d3c0f530e9"
+      ],
+      [
+        "BC2",
+        "f769126e-b5a4-444b-927c-f6d3c0f530e9"
+      ],
+      [
+        "BC3",
+        "f769126e-b5a4-444b-927c-f6d3c0f530e9"
+      ],
+      [
+        "BC5",
+        "3:48:toast-bleecker-street"
+      ],
+      [
+        "Bistro",
+        "f769126e-b5a4-444b-927c-f6d3c0f530e9"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "f769126e-b5a4-444b-927c-f6d3c0f530e9",
+        "Тост Бликер-Стрит"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/9524dca975cfef14d3a1eb721e62e95134876395e954c06ca8349186e21fb8df.webp",
+    "members": [
+      [
+        "BC1",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf"
+      ],
+      [
+        "BC2",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf"
+      ],
+      [
+        "BC3",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf"
+      ],
+      [
+        "Bistro",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf",
+        "Эспрессо"
+      ],
+      [
+        "BC2",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf",
+        "Эспрессо"
+      ],
+      [
+        "BC3",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf",
+        "Эспрессо"
+      ],
+      [
+        "Bistro",
+        "7d849447-8b05-449a-8b78-17d3486ea1cf",
+        "Эспрессо"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/5c486cb4985c510232caefd4550fdd87aa60c6c9e9ffee8aa1710d69ce85bbdc.webp",
+    "members": [
+      [
+        "BC1",
+        "8a870002-da8f-4259-bcfa-1882d56914e6"
+      ],
+      [
+        "BC2",
+        "8a870002-da8f-4259-bcfa-1882d56914e6"
+      ],
+      [
+        "BC3",
+        "8a870002-da8f-4259-bcfa-1882d56914e6"
+      ],
+      [
+        "Bistro",
+        "8a870002-da8f-4259-bcfa-1882d56914e6"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "8a870002-da8f-4259-bcfa-1882d56914e6",
+        "Двойной Эспрессо"
+      ],
+      [
+        "BC2",
+        "8a870002-da8f-4259-bcfa-1882d56914e6",
+        "Двойной эспрессо"
+      ],
+      [
+        "BC3",
+        "8a870002-da8f-4259-bcfa-1882d56914e6",
+        "Двойной эспрессо"
+      ],
+      [
+        "Bistro",
+        "8a870002-da8f-4259-bcfa-1882d56914e6",
+        "Двойной эспрессо"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/3d94723c323a4e41440d376d6b704c8f72c3e9deb10daa72e1c31ed491d37114.webp",
+    "members": [
+      [
+        "BC1",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77"
+      ],
+      [
+        "BC2",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77"
+      ],
+      [
+        "BC3",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77"
+      ],
+      [
+        "Bistro",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77",
+        "Американо"
+      ],
+      [
+        "BC2",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77",
+        "Американо"
+      ],
+      [
+        "BC3",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77",
+        "Американо"
+      ],
+      [
+        "Bistro",
+        "f050a2af-ccc1-4f27-97d6-1b1832068d77",
+        "Американо"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/e7399f193fd8da2c41ef61292e7a937f02bb9227cac9fb06a8c495ee63db8790.webp",
+    "members": [
+      [
+        "BC1",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df"
+      ],
+      [
+        "BC2",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df"
+      ],
+      [
+        "BC3",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df"
+      ],
+      [
+        "Bistro",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df",
+        "Капучино"
+      ],
+      [
+        "BC2",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df",
+        "Капучино"
+      ],
+      [
+        "BC3",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df",
+        "Капучино"
+      ],
+      [
+        "Bistro",
+        "9b18c2ad-da20-4a7c-a2ff-e85473aa73df",
+        "Капучино"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/1822fe80cc5d60ca4bdd19ce35d3d5695c751afce665be297f8294088b67049d.webp",
+    "members": [
+      [
+        "BC1",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e"
+      ],
+      [
+        "BC2",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e"
+      ],
+      [
+        "BC3",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e"
+      ],
+      [
+        "Bistro",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e",
+        "Флэт Уайт"
+      ],
+      [
+        "BC2",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e",
+        "Флэт Уайт"
+      ],
+      [
+        "BC3",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e",
+        "Флэт Уайт"
+      ],
+      [
+        "Bistro",
+        "774a7db5-4e79-49bf-bdad-9dc06ac2843e",
+        "Флэт Уайт"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/55bf8e243a881719d527273293febbc857efb257b9a9e3a288c79cf4d76132fe.webp",
+    "members": [
+      [
+        "BC1",
+        "438afd8d-4920-49f6-803d-263e94ac1811"
+      ],
+      [
+        "BC2",
+        "438afd8d-4920-49f6-803d-263e94ac1811"
+      ],
+      [
+        "BC3",
+        "438afd8d-4920-49f6-803d-263e94ac1811"
+      ],
+      [
+        "Bistro",
+        "438afd8d-4920-49f6-803d-263e94ac1811"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "438afd8d-4920-49f6-803d-263e94ac1811",
+        "Латте"
+      ],
+      [
+        "BC2",
+        "438afd8d-4920-49f6-803d-263e94ac1811",
+        "Латте"
+      ],
+      [
+        "BC3",
+        "438afd8d-4920-49f6-803d-263e94ac1811",
+        "Латте"
+      ],
+      [
+        "Bistro",
+        "438afd8d-4920-49f6-803d-263e94ac1811",
+        "Латте"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/4071019d913305d69a57f2b40e8a7e31efa4faf6e96b0d6b2c0c2886a96b5084.webp",
+    "members": [
+      [
+        "BC1",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c"
+      ],
+      [
+        "BC2",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c"
+      ],
+      [
+        "BC3",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c"
+      ],
+      [
+        "Bistro",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c",
+        "Раф"
+      ],
+      [
+        "BC2",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c",
+        "Раф"
+      ],
+      [
+        "BC3",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c",
+        "Раф"
+      ],
+      [
+        "Bistro",
+        "06cc85aa-2c2e-408d-bd64-a9dcd7cce48c",
+        "Раф"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/bef1710af608f166dcde6dd7ea5383bd753495dd2c3ace96c7bdef0dc16bed7b.webp",
+    "members": [
+      [
+        "BC1",
+        "f0917588-28a0-4513-9059-5e361921f069"
+      ],
+      [
+        "BC2",
+        "f0917588-28a0-4513-9059-5e361921f069"
+      ],
+      [
+        "BC3",
+        "f0917588-28a0-4513-9059-5e361921f069"
+      ],
+      [
+        "BC5",
+        "14:139:strawberry-lemonade"
+      ],
+      [
+        "Bistro",
+        "f0917588-28a0-4513-9059-5e361921f069"
+      ]
+    ],
+    "changed": [
+      [
+        "BC5",
+        "14:139:strawberry-lemonade",
+        "Клубничный Рай"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/fae3f11079603770a6f43fdf03315930eebe6d776c0aa6340f4232dd6f7a079d.webp",
+    "members": [
+      [
+        "BC1",
+        "4cf13bd6-975c-4123-b944-474944a95af2"
+      ],
+      [
+        "BC2",
+        "4cf13bd6-975c-4123-b944-474944a95af2"
+      ],
+      [
+        "BC3",
+        "4cf13bd6-975c-4123-b944-474944a95af2"
+      ],
+      [
+        "Bistro",
+        "4cf13bd6-975c-4123-b944-474944a95af2"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "4cf13bd6-975c-4123-b944-474944a95af2",
+        "Капучино и Круассан — Комбо"
+      ],
+      [
+        "BC2",
+        "4cf13bd6-975c-4123-b944-474944a95af2",
+        "Капучино и Круассан — Комбо"
+      ],
+      [
+        "BC3",
+        "4cf13bd6-975c-4123-b944-474944a95af2",
+        "Капучино и Круассан — Комбо"
+      ],
+      [
+        "Bistro",
+        "4cf13bd6-975c-4123-b944-474944a95af2",
+        "Капучино и Круассан — Комбо"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7116b3342688ff5b8ba4f13aaef049edc486c81940facd7a1ce23184221ebf8b.webp",
+    "members": [
+      [
+        "BC1",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c"
+      ],
+      [
+        "BC2",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c"
+      ],
+      [
+        "BC3",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c"
+      ],
+      [
+        "Bistro",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "BC2",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "BC3",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c",
+        "Рокфеллер Бургер"
+      ],
+      [
+        "Bistro",
+        "bd65a609-d473-4d44-83eb-4fc22ef11e0c",
+        "Рокфеллер Бургер"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/94387182fca8fc7430365d5fce1dd4eb1cbb028f7802d1c654c584a542123f4e.webp",
+    "members": [
+      [
+        "BC1",
+        "559b74be-974b-4a3f-bb6a-104280f82030"
+      ],
+      [
+        "BC2",
+        "559b74be-974b-4a3f-bb6a-104280f82030"
+      ],
+      [
+        "BC3",
+        "559b74be-974b-4a3f-bb6a-104280f82030"
+      ],
+      [
+        "Bistro",
+        "559b74be-974b-4a3f-bb6a-104280f82030"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "559b74be-974b-4a3f-bb6a-104280f82030",
+        "Пицца Фунги"
+      ],
+      [
+        "BC2",
+        "559b74be-974b-4a3f-bb6a-104280f82030",
+        "Пицца Фунги"
+      ],
+      [
+        "BC3",
+        "559b74be-974b-4a3f-bb6a-104280f82030",
+        "Пицца Фунги"
+      ],
+      [
+        "Bistro",
+        "559b74be-974b-4a3f-bb6a-104280f82030",
+        "Пицца Фунги"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/76f6176f9432537584700798967ca7c81db4ef3f4cc6011813d34eeede8be792.webp",
+    "members": [
+      [
+        "BC1",
+        "c865e8cf-0c61-494b-8180-91199ae221d5"
+      ],
+      [
+        "BC2",
+        "c865e8cf-0c61-494b-8180-91199ae221d5"
+      ],
+      [
+        "BC3",
+        "c865e8cf-0c61-494b-8180-91199ae221d5"
+      ],
+      [
+        "Bistro",
+        "c865e8cf-0c61-494b-8180-91199ae221d5"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "c865e8cf-0c61-494b-8180-91199ae221d5",
+        "Пицца «Пепперони»"
+      ],
+      [
+        "BC2",
+        "c865e8cf-0c61-494b-8180-91199ae221d5",
+        "Пицца «Пепперони»"
+      ],
+      [
+        "BC3",
+        "c865e8cf-0c61-494b-8180-91199ae221d5",
+        "Пицца «Пепперони»"
+      ],
+      [
+        "Bistro",
+        "c865e8cf-0c61-494b-8180-91199ae221d5",
+        "Пицца «Пепперони»"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/46bf658d73adedf9e98b4d53fe4364d327cafb861563c28f63f486d1480fb42a.webp",
+    "members": [
+      [
+        "BC1",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9"
+      ],
+      [
+        "BC2",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9"
+      ],
+      [
+        "BC3",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9"
+      ],
+      [
+        "Bistro",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9",
+        "Пицца «Дьявола»"
+      ],
+      [
+        "BC2",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9",
+        "Пицца Дьявола"
+      ],
+      [
+        "BC3",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9",
+        "Пицца Дьявола"
+      ],
+      [
+        "Bistro",
+        "d47de54a-cd6e-4bf4-9a83-b5c2a502eed9",
+        "Пицца Дьявола"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/080fa4cc31ef51342ba38dc0ae99acd1cdbc615992bc57292fda94e65db95e63.webp",
+    "members": [
+      [
+        "BC1",
+        "70e90316-909f-4834-b964-87c5c13603e7"
+      ],
+      [
+        "BC2",
+        "70e90316-909f-4834-b964-87c5c13603e7"
+      ],
+      [
+        "BC3",
+        "70e90316-909f-4834-b964-87c5c13603e7"
+      ],
+      [
+        "Bistro",
+        "70e90316-909f-4834-b964-87c5c13603e7"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "70e90316-909f-4834-b964-87c5c13603e7",
+        "Пицца с Копчёной Уткой"
+      ],
+      [
+        "BC2",
+        "70e90316-909f-4834-b964-87c5c13603e7",
+        "Пицца с Копчёной Уткой"
+      ],
+      [
+        "BC3",
+        "70e90316-909f-4834-b964-87c5c13603e7",
+        "Пицца с Копчёной Уткой"
+      ],
+      [
+        "Bistro",
+        "70e90316-909f-4834-b964-87c5c13603e7",
+        "Пицца с Копчёной Уткой"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/7839e68e45c245892ac082116d8f5022b143b43af14e8fe589ec36c971f9cf1b.webp",
+    "members": [
+      [
+        "BC1",
+        "6776ab18-8197-4b9e-b299-0855897d4509"
+      ],
+      [
+        "BC2",
+        "6776ab18-8197-4b9e-b299-0855897d4509"
+      ],
+      [
+        "BC3",
+        "6776ab18-8197-4b9e-b299-0855897d4509"
+      ],
+      [
+        "Bistro",
+        "6776ab18-8197-4b9e-b299-0855897d4509"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "6776ab18-8197-4b9e-b299-0855897d4509",
+        "Салат Джерси-Сити"
+      ],
+      [
+        "BC2",
+        "6776ab18-8197-4b9e-b299-0855897d4509",
+        "Салат Джерси-Сити"
+      ],
+      [
+        "BC3",
+        "6776ab18-8197-4b9e-b299-0855897d4509",
+        "Салат Джерси-Сити"
+      ],
+      [
+        "Bistro",
+        "6776ab18-8197-4b9e-b299-0855897d4509",
+        "Салат Джерси-Сити"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/de624f57cd2dfadc191631df7b8b34510caa1131664a282eefb3845ede53919a.jpg",
+    "members": [
+      [
+        "BC1",
+        "14f57a20-09d3-4efe-a1e0-3de7ba8c0664"
+      ],
+      [
+        "BC2",
+        "14f57a20-09d3-4efe-a1e0-3de7ba8c0664"
+      ],
+      [
+        "BC3",
+        "14f57a20-09d3-4efe-a1e0-3de7ba8c0664"
+      ],
+      [
+        "BC5",
+        "5:60:salad-organic-soho"
+      ],
+      [
+        "Bistro",
+        "14f57a20-09d3-4efe-a1e0-3de7ba8c0664"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "14f57a20-09d3-4efe-a1e0-3de7ba8c0664",
+        "Салат Органик Сохо"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/c95508e41e93e913336907f15a6655d3a203fedf647bbfb2c368ec438188c406.webp",
+    "members": [
+      [
+        "BC1",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5"
+      ],
+      [
+        "BC2",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5"
+      ],
+      [
+        "BC3",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5"
+      ],
+      [
+        "Bistro",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5",
+        "Салат Челси Маркет"
+      ],
+      [
+        "BC2",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5",
+        "Салат Челси Маркет"
+      ],
+      [
+        "BC3",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5",
+        "Салат Челси Маркет"
+      ],
+      [
+        "Bistro",
+        "bc0a54df-b820-4248-9dba-30b034f0e2d5",
+        "Салат Челси Маркет"
+      ]
+    ],
+    "evidence": [
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/d112e71bd79816d246d1510f1ad90926eb13e6950411cf551fb33bf1f19a0c3f.jpg",
+    "members": [
+      [
+        "BC1",
+        "0fe57fb5-673a-4a9a-a48b-b272123233c2"
+      ],
+      [
+        "BC2",
+        "0fe57fb5-673a-4a9a-a48b-b272123233c2"
+      ],
+      [
+        "BC3",
+        "0fe57fb5-673a-4a9a-a48b-b272123233c2"
+      ],
+      [
+        "BC5",
+        "5:61:salad-wall-street"
+      ],
+      [
+        "Bistro",
+        "0fe57fb5-673a-4a9a-a48b-b272123233c2"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "0fe57fb5-673a-4a9a-a48b-b272123233c2",
+        "Салат Уолл Стрит"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/9d36ec37c07a8f810d768bdfa7212482ea350584df99900145497f725bd3a0ff.jpg",
+    "members": [
+      [
+        "BC1",
+        "d80d20ae-2041-4be7-ac7b-791f1350d49b"
+      ],
+      [
+        "BC2",
+        "d80d20ae-2041-4be7-ac7b-791f1350d49b"
+      ],
+      [
+        "BC3",
+        "d80d20ae-2041-4be7-ac7b-791f1350d49b"
+      ],
+      [
+        "BC5",
+        "5:62:salad-central-park"
+      ],
+      [
+        "Bistro",
+        "d80d20ae-2041-4be7-ac7b-791f1350d49b"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "d80d20ae-2041-4be7-ac7b-791f1350d49b",
+        "Салат Центральный Парк"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  },
+  {
+    "canonical": "https://meqttgiksyuyffuoghwx.supabase.co/storage/v1/object/public/menu-images/qr-archive/v1/d5eb79354edbc802c3fd69cb5d3aa9e4c8210448fd8a5c3ef00231881f66ffbd.jpg",
+    "members": [
+      [
+        "BC1",
+        "269d023f-a70f-40be-9b00-68d8df358087"
+      ],
+      [
+        "BC2",
+        "269d023f-a70f-40be-9b00-68d8df358087"
+      ],
+      [
+        "BC3",
+        "269d023f-a70f-40be-9b00-68d8df358087"
+      ],
+      [
+        "BC5",
+        "6:73:bowl"
+      ],
+      [
+        "Bistro",
+        "269d023f-a70f-40be-9b00-68d8df358087"
+      ]
+    ],
+    "changed": [
+      [
+        "BC1",
+        "269d023f-a70f-40be-9b00-68d8df358087",
+        "Боул"
+      ]
+    ],
+    "evidence": [
+      "exact native name and confirmed recipe or existing archived photo identity",
+      "same RMS product UUID and identical base recipe/options"
+    ]
+  }
+]

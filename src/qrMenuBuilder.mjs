@@ -1,5 +1,6 @@
 import {tagCodes} from './qrMenuTags.mjs';
 import {resolveQrArchiveImage} from './qrArchivedImages.mjs';
+import {shareQrDishPhoto} from './qrSharedPhotos.mjs';
 export const qrBuilderBranches=['BC1','BC2','BC4','BC5'];
 export const qrBuilderLanguages=['ru','az','en'];
 export const emptyQrBuilder=()=>({categories:{},items:{},order:{},product_facts:{},winter_featured:null,offer:null});
@@ -69,7 +70,7 @@ export function qrBuilderOverlay(base,doc,branch){
         ...(Array.isArray(p.tags)?{menuBuilderTags:tagCodes(p.tags)}:{})});
     }
   }
-  return out.map(withArchivedImage);
+  return out.map(product => shareQrDishPhoto(withArchivedImage(product), branch, Boolean(items[product.id]?.image || product.__qr_override?.image || product.__qr_override?.image_url)));
 }
 function withArchivedImage(product){
   const image=resolveQrArchiveImage(product.image);
