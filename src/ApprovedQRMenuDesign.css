@@ -339,3 +339,18 @@ html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1
   font-size: 13px !important;
   overflow-wrap: anywhere;
 }
+
+/* BC5 guest menu: leave room for the home indicator and keep 44px touch targets. */
+html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] {
+  padding-bottom: max(94px, calc(70px + env(safe-area-inset-bottom))) !important;
+}
+html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav {
+  padding-block: 4px calc(4px + env(safe-area-inset-bottom)) !important;
+}
+html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button {
+  min-height: 44px !important;
+  gap: 3px !important;
+}
+html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse="menu"] .floating-cart {
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
