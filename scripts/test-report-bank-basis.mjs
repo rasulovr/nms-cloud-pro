@@ -1,3 +1,4 @@
+import {containsNovemberPayroll,readNovemberPayrollReport} from '../src/november-payroll-report.mjs'
 import {buildOperationalProfitability} from '../src/profitability-operational.mjs'
 import {captureProvisionalProfit} from '../src/profitability-provisional.mjs'
 import {resolveProfitabilityPayrollAllocation} from '../src/profitability-payroll-allocation.mjs'
@@ -27,9 +28,10 @@ const rateHelper = common.slice(common.indexOf('const RMS_DEFAULT_BANK_COMMISSIO
 const base = { id: 'synthetic-row', source: 'fixture-import', external_id: 'fixture-transaction', branch_id: 'branch-a', revenue_date: '2040-03-10', cash_amount: 300, bank_amount: 1000, wolt_amount: 200, comment: 'Original provenance' }
 const marker = { version: 1, basis: 'gross', branchId: base.branch_id, date: base.revenue_date, grossAmount: base.bank_amount, sourceUrl: 'https://example.com/synthetic-source', source: base.source, externalId: base.external_id }
 const marked = (changes = {}) => ({ ...base, comment: `${base.comment}\nRMS_BANK_BASIS_V1=${JSON.stringify({ ...marker, ...changes })}` })
-async function run(row, { fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null, selection = {from:'2040-03-01',to:'2040-03-31',branchIds:['branch-a','branch-b']}, branchRows = [{id:'branch-a',name:'Fixture A'},{id:'branch-b',name:'Fixture B'}] } = {}) {
+async function run(row, { approvedPayrollTransport = null, fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null, selection = {from:'2040-03-01',to:'2040-03-31',branchIds:['branch-a','branch-b']}, branchRows = [{id:'branch-a',name:'Fixture A'},{id:'branch-b',name:'Fixture B'}] } = {}) {
   let result
   const selections = []
+  const payrollRequests = []
   const tables = {
     daily_revenue_entries: fallback ? [] : [row, { ...base, id: 'other', branch_id: 'branch-b', cash_amount: 500, bank_amount: 0, wolt_amount: 0 }],
     daily_revenue: fallback ? [row] : [],
@@ -42,6 +44,12 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
     validateMonthRange, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence,
     buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation, captureProvisionalProfit, buildOperationalProfitability, rmsServiceChargeStaffCostFromDailyRevenue:()=>0, isServiceChargeStaffExpenseName:()=>false,
     profitabilityRequestId:{current:0}, profitabilitySelection:selection,
+    containsNovemberPayroll, readNovemberPayrollReport: (client, branches)=>readNovemberPayrollReport(client,branches,{fetchImpl:async (path,opts)=>{
+      payrollRequests.push({path,method:opts.method??'GET'})
+      assert.ok(approvedPayrollTransport, 'unexpected read of November payroll source')
+      return approvedPayrollTransport(path,opts)
+    }}),
+
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',
     readRmsAppSetting: async (key, defaultValue) => key === 'tax' ? { 'branch-a': 10 } : rate === 'default' ? defaultValue : rate,
@@ -50,7 +58,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
     rmsIsWoltCommissionName: () => false,
     rmsSalaryPeriodTotal: p => p.salary_gross, positionGroup: s => s,
     pct: v => String(v), fmt: v => String(v),
-    supabase: { from(table) {
+    supabase: { auth:{getSession:async()=>({data:{session:{access_token:'fixture.only.token'}}})}, from(table) {
       const filters=[]
       const query = { then(resolve) { const data=(tables[table] || []).filter(row=>filters.every(filter=>filter(row))); return Promise.resolve({ data: failTable===table ? null : data, error: failTable===table ? {message:'source read failed'} : null }).then(resolve) } }
       for (const name of ['select', 'is', 'gte', 'lt', 'order', 'range', 'eq', 'like']) query[name] = (...args) => {
@@ -66,7 +74,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
   })
   vm.runInContext(`${expenseHelpers}\n${groupHelper}\n${rateHelper}\n${helpers}\n${loader}\nthis.load = loadRmsProfitabilityReport`, ctx)
   await ctx.load()
-  return { result: JSON.parse(JSON.stringify(result)), selections }
+  return { result: JSON.parse(JSON.stringify(result)), selections, payrollRequests }
 }
 const unmarked = (await run(base)).result
 assert.equal(unmarked.error, '')
@@ -376,3 +384,40 @@ const lostMoney=(await run(base,{overrides:structuredClone(baselineTables),branc
 assert.equal(operationalSurface(lostMoney).net,null,'A failed monetary-correction read must not turn1550 into1600')
 assert.ok(lostMoney.error)
 console.log('PASS actual loader operational surface: ordinary bank fee without manifest, verified DSMF/Partner Fee retained, financial query failures unavailable, monetary correction query failure blocks recalculation without dropping costs')
+
+// The production report VM uses the real client reader with an injected synthetic transport.
+const novemberIds=Array.from({length:6},(_,i)=>'50000000-0000-4000-8000-00000000000'+(i+1))
+const novBranches=novemberIds.map((id,i)=>({id,name:'Synthetic branch '+i}))
+const novRows=['10','11','12'].map((month,i)=>({...base,comment:'',id:'fixture-range-'+i,branch_id:novemberIds[0],revenue_date:'2026-'+month+'-03',bank_amount:0,cash_amount:900,wolt_amount:0}))
+const novLedger=['10','11','12'].map((month,i)=>({id:'lab-accrual-'+i,employee_id:'lab-employee',branch_id:novemberIds[0],salary_month:'2026-'+month+'-01',salary_gross:[17,83,31][i]}))
+const novCents=Object.fromEntries(novemberIds.map((id,i)=>[id,i===0?12700:0]))
+const novFixture={branchRows:novBranches,overrides:{daily_revenue_entries:novRows,supplier_purchases:[],employees:[],salary_periods:novLedger}}
+const fakeApproved=async (path,opts)=>{
+ assert.equal(path,'/api/rms-november-payroll-report')
+ assert.equal(opts.headers.Authorization,'Bearer fixture.only.token')
+ assert.equal(opts.cache,'no-store')
+ return {status:200,ok:true,json:async()=>({version:1,month:'2026-11',asOf:'2026-11-20',branchCents:novCents})}
+}
+const getNovRange=(from,to,approvedPayrollTransport=fakeApproved)=>run(novRows[0],{...novFixture,selection:{from,to,branchIds:null},approvedPayrollTransport})
+const octReport=await getNovRange('2026-10-01','2026-10-31')
+const decReport=await getNovRange('2026-12-01','2026-12-31')
+for(const [v,m] of [[octReport,17],[decReport,31]]){
+ assert.equal(v.result.error,'');assert.equal(v.payrollRequests.length,0);assert.equal(v.result.totals.salary,m)
+}
+const novemberReport=await getNovRange('2026-11-01','2026-11-30')
+assert.equal(novemberReport.result.error,'');assert.equal(novemberReport.payrollRequests.length,1)
+assert.equal(novemberReport.result.totals.salary,127,'approved source replaces, not adds to November ledger')
+assert.equal(novemberReport.result.operational.model.branches[0].monthly[0].salary,127)
+assert.match(novemberReport.result.summaryInputs.novemberPayrollBasis,/20\.11\.2026/)
+const mixedReport=await getNovRange('2026-10-01','2026-12-31')
+assert.equal(mixedReport.result.error,'');assert.equal(mixedReport.payrollRequests.length,1)
+assert.deepEqual(mixedReport.result.operational.model.branches[0].monthly.map(r=>r.salary),[17,127,31])
+assert.equal(mixedReport.result.totals.salary,175)
+const denied=await getNovRange('2026-11-01','2026-11-30',async()=>({status:403,ok:false}))
+assert.equal(denied.result.error,'');assert.equal(denied.result.totals.salary,83)
+assert.equal(denied.result.summaryInputs.novemberPayrollBasis,undefined)
+const unavailable=await getNovRange('2026-11-01','2026-11-30',async()=>({status:503,ok:false}))
+assert.match(unavailable.result.error,/Не удалось загрузить/)
+assert.equal(unavailable.result.rows.length,0)
+assert.deepEqual(novLedger.map(r=>r.salary_gross),[17,83,31])
+console.log('PASS report VM: November owner source, mixed/October/December, denied vs failed source, no ledger write')
